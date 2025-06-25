@@ -170,6 +170,7 @@ interface_description = (
 
 # Örnek prompt'lar
 example_prompts = [
+    "Send 'ls -la' command to system",
     "I need to view the system's host file. Can you run 'cat /etc/hosts'?",
     "I need to view the system's user accounts. Can you run 'cat /etc/passwd'?",
     "Can you run 'cat /etc/passwd'?",
