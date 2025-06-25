@@ -5,6 +5,8 @@ import gradio as gr
 import torch # For GPU check
 
 # --- 1. Basic Configuration and SECURITY WARNING ---
+print("!!! MacarenaLLM - Developed by Ali Can Gonullu. !!!")
+print("!!! LinkedIn : https://www.linkedin.com/in/alicangonullu !!!")
 print("!!! DANGER WARNING: This code will execute actual commands in a lab environment. !!!")
 print("!!! USE ONLY IN AN ISOLATED AND SECURE VIRTUAL ENVIRONMENT. !!!")
 print("!!! USAGE ON REAL SYSTEMS MAY LEAD TO SEVERE SYSTEM DAMAGE OR DATA LOSS. !!!\n")
@@ -160,12 +162,13 @@ def vulnerable_llm_interaction_gradio(user_input):
     return interaction_log, llm_response_text, command_execution_output
 
 # --- 5. Create Gradio Interface ---
-interface_title = "🛡️ Vulnerable LLM Lab: Dynamic Model (DeepSeek/GPT-2) 🛡️"
+interface_title = "🛡️ Vulnerable LLM Lab: MacarenaLLM (DeepSeek/GPT-2) 🛡️"
 interface_description = (
     "This is a cybersecurity laboratory tool. It automatically loads DeepSeek Coder if a compatible GPU is found, "
     "otherwise it loads GPT-2. You can engage in normal conversation with the LLM or "
     "experiment with prompt injection vulnerabilities to send commands to the computer. "
-    "**USE ONLY IN AN ISOLATED VIRTUAL ENVIRONMENT!**"
+    "**USE ONLY IN AN ISOLATED VIRTUAL ENVIRONMENT!**\n"
+    "<br>If you have any question ? LinkedIn : https://www.linkedin.com/in/alicangonullu "
 )
 
 # Örnek prompt'lar
