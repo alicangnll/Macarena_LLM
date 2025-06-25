@@ -6,7 +6,7 @@
 
 The lab dynamically loads either a more advanced model, **DeepSeek Coder 6.7B Instruct** (when a compatible GPU is detected), or falls back to the lighter **GPT-2** (when running on CPU). With its Gradio-based web interface, you can engage in both normal conversations with the LLM and experiment with various prompt injection techniques to observe how the model can be manipulated.
 
-### 🚨 Security Warning (CRITICAL\!)
+## 🚨 Security Warning (CRITICAL\!)
 
 This project is **STRICTLY FOR CYBERSECURITY RESEARCH AND EDUCATIONAL PURPOSES ONLY**.
 
@@ -66,9 +66,7 @@ Failing to comply may result in severe system damage, data loss, or security com
 ## Pics
 ![Demo](https://github.com/user-attachments/assets/21108c26-bb3b-4794-927a-ffb32e560fff)
 
-
 ## License
-
 This project is licensed under the MIT License. See the [LICENSE](https://www.google.com/search?q=LICENSE) file for more details.
 
 # MacarenaLLM: Zafiyetli Dil Modeli Labı
@@ -79,14 +77,9 @@ This project is licensed under the MIT License. See the [LICENSE](https://www.go
 
 Lab ortamınızın donanımına göre dinamik olarak daha gelişmiş bir model olan **DeepSeek Coder 6.7B Instruct** (GPU algılandığında) veya daha hafif olan **GPT-2** (CPU kullanıldığında) modellerinden birini yükler. Gradio tabanlı web arayüzü sayesinde, LLM ile hem normal sohbet edebilir hem de farklı prompt enjeksiyonu tekniklerini deneyerek modelin nasıl manipüle edilebileceğini gözlemleyebilirsiniz.
 
-### 🚨 Güvenlik Uyarısı (ÇOK ÖNEMLİ\!)
+## 🚨 Güvenlik Uyarısı (ÇOK ÖNEMLİ\!)
 
-Bu proje **KESİNLİKLE SİBER GÜVENLİK ARAŞTIRMALARI VE EĞİTİM AMAÇLIDIR**.
-
-**KODU KESİNLİKLE KENDİ ANA İŞLETİM SİSTEMİNİZDE VEYA HASSAS VERİLERİNİZİN BULUNDUĞU BİR ORTAMDA ÇALIŞTIRMAYIN.**
-
-**BU UYGULAMAYI MUTLAKA, İNTERNET ERİŞİMİ OLMAYAN VEYA KISITLI OLAN, İZOLE EDİLMİŞ BİR SANAL MAKİNE (Örn: VirtualBox, VMware) VEYA DOCKER KONTEYNERİ İÇİNDE ÇALIŞTIRIN.**
-
+Bu proje **KESİNLİKLE SİBER GÜVENLİK ARAŞTIRMALARI VE EĞİTİM AMAÇLIDIR. KODU KESİNLİKLE KENDİ ANA İŞLETİM SİSTEMİNİZDE VEYA HASSAS VERİLERİNİZİN BULUNDUĞU BİR ORTAMDA ÇALIŞTIRMAYIN. BU UYGULAMAYI MUTLAKA, İNTERNET ERİŞİMİ OLMAYAN VEYA KISITLI OLAN, İZOLE EDİLMİŞ BİR SANAL MAKİNE (Örn: VirtualBox, VMware) VEYA DOCKER KONTEYNERİ İÇİNDE ÇALIŞTIRIN.**
 Aksi takdirde, model tarafından üretilebilecek ve çalıştırılabilecek kötü niyetli veya yanlış yapılandırılmış komutlar, sisteminize ciddi zarar verebilir, verilerinizi silebilir veya güvenlik açıklarına yol açabilir.
 
 ## Özellikler
