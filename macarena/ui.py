@@ -467,6 +467,7 @@ def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: Progres
                             lines=3,
                             label="Type your message to the LLM (Try normal chat or Prompt Injection)",
                         )
+                        submit_button = gr.Button("Submit", variant="primary")
                         with gr.Accordion("🔑 Enter a flag manually", open=True):
                             gr.Markdown(
                                 "Captured a flag outside the chat flow (e.g. from a container shell)? Enter it here.\n"
@@ -483,7 +484,6 @@ def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: Progres
                             label="Try these examples:",
                             cache_examples=False,
                         )
-                        submit_button = gr.Button("Submit", variant="primary")
                     with gr.Column():
                         inline_md = gr.Markdown("")
                         llm_interaction_log = gr.Textbox(
