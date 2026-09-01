@@ -12,7 +12,15 @@ from macarena.config import (
     ModelSpec,
     resolve_model_spec,
 )
-from macarena.llm import DEFAULT_STUB_RESPONSE, StubClient, build_prompt, clean_response, generation_kwargs
+from macarena.llm import (
+    DEFAULT_STUB_RESPONSE,
+    ClientSlot,
+    LLMLoadError,
+    StubClient,
+    build_prompt,
+    clean_response,
+    generation_kwargs,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -94,6 +102,53 @@ def test_forced_deepseek_without_gpu_warns_but_complies(capsys):
     spec = resolve_model_spec("deepseek", cuda_available=lambda: False)
     assert spec.model_id == DEEPSEEK_MODEL_ID and spec.device == -1
     assert "unusably slow" in capsys.readouterr().out
+
+
+def test_custom_hf_id_keeps_its_casing():
+    """HF repo ids are case-sensitive -- only aliases fold to lowercase."""
+    spec = resolve_model_spec("Qwen/Qwen2.5-Coder-1.5B-Instruct", cuda_available=lambda: False)
+    assert spec.model_id == "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+    assert spec.is_instruct is True
+
+
+def test_alias_matching_stays_case_insensitive():
+    assert resolve_model_spec("GPT2", cuda_available=lambda: True).model_id == GPT2_MODEL_ID
+    assert resolve_model_spec("DeepSeek", cuda_available=lambda: False).model_id == DEEPSEEK_MODEL_ID
+
+
+# --- ClientSlot (runtime model swapping) --------------------------------------
+def test_client_slot_swaps_the_active_client(monkeypatch):
+    import macarena.llm as llm_mod
+
+    class FakeClient(llm_mod.LLMClient):
+        def load(self) -> None:  # offline stand-in: no HF download
+            pass
+
+    monkeypatch.setattr(llm_mod, "LLMClient", FakeClient)
+    slot = ClientSlot(StubClient(_spec(STUB_MODEL_ID)))
+    assert slot.client.spec.model_id == STUB_MODEL_ID
+
+    slot.swap(_spec(GPT2_MODEL_ID))
+    assert slot.client.spec.model_id == GPT2_MODEL_ID
+
+
+def test_client_slot_failed_swap_keeps_previous_model(monkeypatch):
+    import macarena.llm as llm_mod
+
+    class BrokenClient(llm_mod.LLMClient):
+        def load(self):
+            raise LLMLoadError("no such repo")
+
+    monkeypatch.setattr(llm_mod, "LLMClient", BrokenClient)
+    slot = ClientSlot(StubClient(_spec(STUB_MODEL_ID)))
+
+    try:
+        slot.swap(_spec("broken/broken-model"))
+    except LLMLoadError:
+        pass
+    else:
+        raise AssertionError("swap should have re-raised the load failure")
+    assert slot.client.spec.model_id == STUB_MODEL_ID  # old model stayed active
 
 
 # --- import purity canary ------------------------------------------------------

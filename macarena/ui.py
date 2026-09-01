@@ -17,19 +17,28 @@ import gradio as gr
 
 from macarena.audit import AuditEvent, AuditLogger, read_events
 from macarena.challenges import CHALLENGES, ProgressStore, flag_for, match_challenges
-from macarena.config import AUDIT_LOG_PATH, ENV_CHALLENGE_FLAG_VAR, MAX_INPUT_CHARS
+from macarena.config import (
+    AUDIT_LOG_PATH,
+    DEEPSEEK_MODEL_ID,
+    ENV_CHALLENGE_FLAG_VAR,
+    GPT2_MODEL_ID,
+    MAX_INPUT_CHARS,
+    STUB_MODEL_ID,
+    resolve_model_spec,
+)
 from macarena.context import inline_files
 from macarena.executor import execute
-from macarena.llm import LLMClient
+from macarena.llm import LLMLoadError, LLMClient, ClientSlot
 from macarena.parser import extract_command
 from macarena.policy import LEVEL_DESCRIPTIONS, SecurityLevel, validate
 
 INTERFACE_TITLE = "🛡️ Vulnerable LLM Lab: MacarenaLLM (DeepSeek/GPT-2) 🛡️"
 INTERFACE_DESCRIPTION = (
     "This is a cybersecurity laboratory tool. It automatically loads DeepSeek Coder if a compatible GPU is found, "
-    "otherwise it loads GPT-2. Pick a **security level** (DVWA-style), then chat normally or experiment with "
-    "prompt injection to send commands to the computer. Try to solve the 6 capture-the-flag challenges "
-    "in the Challenges tab — and then watch which ones still fall at the High level.\n"
+    "otherwise it loads GPT-2 (you can switch models live in the ⚙️ Model tab). Pick a **security level** "
+    "(DVWA-style), then chat normally or experiment with prompt injection to send commands to the computer. "
+    "Try to solve the 6 capture-the-flag challenges in the Challenges tab — and then watch which ones still "
+    "fall at the High level.\n"
     "**USE ONLY IN AN ISOLATED VIRTUAL ENVIRONMENT!**\n"
     "<br>If you have any question ? LinkedIn : https://www.linkedin.com/in/alicangonullu "
 )
@@ -158,6 +167,68 @@ def _audit_rows() -> List[List]:
             ]
         )
     return rows
+
+
+# --- Model tab: runtime model selection -------------------------------------
+
+MODEL_PRESETS = [
+    ("GPT-2 — CPU fallback (container default)", GPT2_MODEL_ID),
+    ("DeepSeek Coder 6.7B Instruct — primary model (needs a GPU)", DEEPSEEK_MODEL_ID),
+    ("Stub — deterministic fake model, no download", STUB_MODEL_ID),
+    ("Custom — use the Hugging Face id I typed below", "custom"),
+]
+
+MODEL_TAB_MD = """### ⚙️ Swap the model at runtime
+
+Pick a preset or type **any Hugging Face repo id** (`org/model`) and press
+**Load model**. The download happens on first use and lands in the `hf-cache`
+volume, so it survives restarts.
+
+⚠️ **Notes:**
+- Loading happens inside this request — a big model takes **minutes on CPU**.
+- Anyone who can reach this page can trigger a multi-GB download and use the
+  loaded model: unbounded consumption + model exposure (OWASP LLM04 / LLM10).
+  Keep the lab on an isolated, trusted network.
+- A failed load keeps the **previous** model active — the lab never breaks.
+- HF ids are case-sensitive (`Qwen/Qwen2.5-Coder-1.5B-Instruct`, not `qwen/...`).
+"""
+
+
+def _model_status_md(slot) -> str:
+    spec = slot.client.spec
+    device = "GPU" if spec.device != -1 else "CPU"
+    kind = "instruction-tuned" if spec.is_instruct else "base/completion"
+    return (
+        f"**Active model:** `{spec.model_id}` · {device} · {kind} · "
+        f"max_new_tokens={spec.max_new_tokens}"
+    )
+
+
+def _load_model(slot: ClientSlot, preset_value: str, custom_id: str) -> str:
+    """Resolve + load the requested model into the slot; returns a status string.
+
+    Never raises: load failures are reported as text and the old model stays.
+    """
+    selected = (custom_id or "").strip() if (preset_value or "") == "custom" else (preset_value or "")
+    if not selected:
+        return "⚠️ Pick a preset, or choose **Custom** and type a Hugging Face model id first."
+
+    try:
+        spec = resolve_model_spec(selected)
+    except Exception as e:  # defensive: resolution is pure, but never break the UI
+        return f"❌ Could not resolve `{selected}`: {e}"
+
+    try:
+        slot.swap(spec)
+    except LLMLoadError as e:
+        return (
+            f"❌ Load failed for `{spec.model_id}`:\n\n> {e}\n\n"
+            f"The previous model stays active."
+        )
+    except Exception as e:  # network errors etc.
+        return f"❌ Unexpected error while loading `{spec.model_id}`: {e}\n\nThe previous model stays active."
+
+    return "✅ Model loaded.\n\n" + _model_status_md(slot)
 
 
 def _interaction(
@@ -302,6 +373,8 @@ def _interaction(
 
 
 def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: ProgressStore) -> gr.Blocks:
+    slot = ClientSlot(client)  # lets the Model tab hot-swap the active client
+
     with gr.Blocks(title=INTERFACE_TITLE) as demo:
         gr.Markdown(f"# {INTERFACE_TITLE}")
         gr.Markdown(INTERFACE_DESCRIPTION)
@@ -342,6 +415,21 @@ def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: Progres
                             lines=10, label="Command Output (executed / blocked)", interactive=False
                         )
 
+            # ---------------- Model tab ----------------
+            with gr.Tab("⚙️ Model"):
+                gr.Markdown(MODEL_TAB_MD)
+                model_status_md = gr.Markdown(_model_status_md(slot))
+                model_preset_radio = gr.Radio(
+                    choices=MODEL_PRESETS,
+                    value=DEEPSEEK_MODEL_ID,  # the lab's primary model is the default pick
+                    label="Model",
+                )
+                custom_model_textbox = gr.Textbox(
+                    label="Custom Hugging Face model id (org/model)",
+                    placeholder="e.g. Qwen/Qwen2.5-Coder-1.5B-Instruct",
+                )
+                load_model_button = gr.Button("Load model", variant="primary")
+
             # ---------------- Challenges tab ----------------
             with gr.Tab("🏁 Challenges"):
                 gr.Markdown(
@@ -369,7 +457,13 @@ def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: Progres
         session_state = gr.State(uuid.uuid4)  # fresh id per browser session
 
         def run_interaction(user_input, level_value, session_id):
-            return _interaction(user_input, level_value, session_id, client, audit_logger, progress)
+            return _interaction(user_input, level_value, session_id, slot.client, audit_logger, progress)
+
+        load_model_button.click(
+            lambda preset, custom: _load_model(slot, preset, custom),
+            inputs=[model_preset_radio, custom_model_textbox],
+            outputs=model_status_md,
+        )
 
         outputs = [
             llm_interaction_log,

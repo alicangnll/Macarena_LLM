@@ -74,11 +74,15 @@ def resolve_model_spec(
 
     Precedence: explicit override > MACARENA_MODEL env var > CUDA detection
     (the original lab's dynamic behaviour). Accepted values: ``deepseek``,
-    ``gpt2``, ``stub`` or any full Hugging Face repo id.
+    ``gpt2``, ``stub`` or any full Hugging Face repo id. Alias matching is
+    case-insensitive, but a repo id keeps its original casing (HF ids are
+    case-sensitive, e.g. ``Qwen/Qwen2.5-Coder-1.5B-Instruct``).
     """
-    choice = (override or os.environ.get("MACARENA_MODEL", "") or "").strip().lower() or None
-    if choice in _ALIASES:
-        choice = _ALIASES[choice]
+    raw = (override or os.environ.get("MACARENA_MODEL", "") or "").strip()
+    choice: Optional[str] = None
+    if raw:
+        lowered = raw.lower()
+        choice = _ALIASES.get(lowered, raw)  # alias -> canonical id; else keep the user's casing
 
     cuda = cuda_available if cuda_available is not None else _default_cuda_check
 

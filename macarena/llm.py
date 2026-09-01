@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from macarena.config import ModelSpec
+from macarena.config import STUB_MODEL_ID, ModelSpec
 
 
 class LLMError(Exception):
@@ -113,3 +113,22 @@ class StubClient(LLMClient):
     def generate(self, user_input: str) -> GenerationResult:
         text = os.environ.get("MACARENA_STUB_RESPONSE", DEFAULT_STUB_RESPONSE)
         return GenerationResult(text, text)
+
+
+class ClientSlot:
+    """Mutable holder for the active client so the UI can hot-swap models.
+
+    swap() builds and fully loads the new client BEFORE replacing the
+    reference, so a concurrent generate() sees either the old (intact) client
+    or the new (ready) one -- never a half-loaded pipeline. If loading fails
+    it raises LLMLoadError and the previous model simply stays active.
+    """
+
+    def __init__(self, client: LLMClient) -> None:
+        self.client = client
+
+    def swap(self, spec: ModelSpec) -> LLMClient:
+        client = StubClient(spec) if spec.model_id == STUB_MODEL_ID else LLMClient(spec)
+        client.load()  # may raise LLMLoadError -- old client stays active
+        self.client = client
+        return client

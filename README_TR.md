@@ -47,6 +47,7 @@ Altı flag, format `MACARENA{...}`. İlerleme arayüzde (ve `progress.json` içi
 ## Özellikler
 
 * **Dinamik Model Yükleme:** CUDA GPU'da `deepseek-ai/deepseek-coder-6.7b-instruct`, CPU'da `gpt2` (değişmedi), ayrıca `MACARENA_MODEL` override'ı (`deepseek` / `gpt2` / herhangi bir HF repo id / modelsiz arayüz geliştirmesi için `stub`).
+* **Çalışma Anında Model Değiştirme:** ⚙️ Model sekmesi modelleri canlı değiştirir — DeepSeek (varsayılan seçim), GPT-2, Stub veya **elle yazdığınız herhangi bir Hugging Face repo id'si** (`org/model`, büyük/küçük harfe duyarlı). Başarısız yüklemede önceki model aktif kalır; indirmeler `hf-cache` volume'üne düşer.
 * **Güvenlik Seviyeleri:** DVWA tarzı Low / Medium / High / Impossible, seviye başına savunma açıklamasıyla.
 * **CTF Görev Modu:** İlerleme takibi, ipuçları ve sıfırlama özellikli 6 flag'li görev.
 * **Dolaylı Prompt Enjeksiyonu:** naive-RAG dosya ekleme ("Poisoned Notes" senaryosu).

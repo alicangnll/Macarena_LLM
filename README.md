@@ -51,6 +51,7 @@ Hints are available in the UI (Challenges tab). Flags are fixed and committed; e
 ## Features
 
 * **Dynamic Model Loading:** `deepseek-ai/deepseek-coder-6.7b-instruct` on CUDA GPUs, `gpt2` on CPU (unchanged), plus a `MACARENA_MODEL` override (`deepseek` / `gpt2` / any HF repo id / `stub` for UI development without a model).
+* **Runtime Model Switching:** the ⚙️ Model tab swaps models live — DeepSeek (default pick), GPT-2, Stub, or **any Hugging Face repo id you type** (`org/model`, case-sensitive). A failed load keeps the previous model active; downloads land in the `hf-cache` volume.
 * **Security Levels:** DVWA-style Low / Medium / High / Impossible with per-level defence descriptions.
 * **CTF Challenge Mode:** 6 flag challenges with progress tracking, hints and reset.
 * **Indirect Prompt Injection:** naive-RAG file attachment (the "Poisoned Notes" scenario).
