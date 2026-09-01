@@ -355,7 +355,16 @@ def _interaction(
 
     inline_md = ""
     if inline.files_inlined:
-        inline_md = f"📎 **Auto-attached to the prompt (naive RAG):** {', '.join(inline.files_inlined)}"
+        # Show the naive tool's hand: not just WHICH file got attached, but the
+        # exact bytes it pasted into the prompt (4-backtick fence survives any
+        # ``` inside the content). This is the over-sharing, made visible.
+        inline_md = (
+            f"📎 **Auto-attached to the prompt (naive RAG):** {', '.join(inline.files_inlined)}\n\n"
+            "What the naive tool pasted into the prompt, **verbatim**:\n\n"
+            "````text\n"
+            + "\n\n".join(inline.inlined_blocks)
+            + "\n````"
+        )
     if inline.skipped:
         skipped_note = f" (skipped, not found: {', '.join(inline.skipped)})"
         inline_md = (inline_md + skipped_note).strip()

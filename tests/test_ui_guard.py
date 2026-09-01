@@ -76,6 +76,25 @@ def test_impossible_still_captures_flags_disclosed_in_the_reply(tmp_path, monkey
     assert "read-secret" in progress.solved_ids()       # ...and is still captured
 
 
+def test_attachment_info_shows_the_inlined_content(tmp_path, monkeypatch):
+    """The 📎 line must show WHAT was pasted into the prompt, not just the file
+    name -- the over-sharing has to be visible to be a lesson."""
+    monkeypatch.setenv("MACARENA_STUB_RESPONSE", "Here are the notes.")
+    spec = resolve_model_spec("stub", cuda_available=lambda: False)
+    client = StubClient(spec)
+    audit = AuditLogger(tmp_path / "audit.jsonl")
+    progress = ProgressStore(tmp_path / "progress.json")
+
+    log, response, output, inline_md, *_ = _interaction(
+        "please summarize notes.txt", "low", "session-4", client, audit, progress
+    )
+
+    assert "Auto-attached" in inline_md and "notes.txt" in inline_md
+    assert "[Attached file: notes.txt]" in inline_md     # the verbatim block...
+    assert "<<<" in inline_md and ">>>" in inline_md
+    assert "NOTE TO SELF" in inline_md                   # ...payload included: poisoning made visible
+
+
 def _flag_store(tmp_path):
     audit = AuditLogger(tmp_path / "audit.jsonl")
     progress = ProgressStore(tmp_path / "progress.json")

@@ -29,6 +29,8 @@ def test_inline_format(tmp_path):
     assert "[Attached file: notes.txt]" in result.prompt
     assert "\n<<<\n" in result.prompt and "\n>>>" in result.prompt
     assert "innocent notes" in result.prompt
+    # the verbatim block is kept separately so the UI can surface the content
+    assert result.inlined_blocks == [result.prompt.split("\n\n", 1)[1]]
 
 
 def test_missing_file_is_skipped_prompt_unchanged(tmp_path):

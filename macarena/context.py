@@ -32,6 +32,9 @@ class InlineResult:
     prompt: str
     files_inlined: List[str] = field(default_factory=list)
     skipped: List[str] = field(default_factory=list)
+    # Each inlined block verbatim ("[Attached file: name]\n<<<\n...\n>>>"), so the
+    # UI can show the user exactly what the naive tool pasted into the prompt.
+    inlined_blocks: List[str] = field(default_factory=list)
 
 
 def find_file_references(user_input: str) -> List[str]:
@@ -75,8 +78,10 @@ def inline_files(user_input: str, base_dir: Path = APP_DIR) -> InlineResult:
             continue
 
         budget -= size
+        block = f"[Attached file: {name}]\n<<<\n{content}\n>>>"
         result.files_inlined.append(name)
-        result.prompt += f"\n\n[Attached file: {name}]\n<<<\n{content}\n>>>"
+        result.inlined_blocks.append(block)
+        result.prompt += f"\n\n{block}"
 
     for name in references[MAX_INLINE_FILES:]:
         result.skipped.append(name)  # over the cap: referenced but never read
