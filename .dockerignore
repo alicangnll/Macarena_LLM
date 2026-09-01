@@ -1,0 +1,24 @@
+.git/
+.gitignore
+.dockerignore
+docker-compose.yml
+logs/
+tests/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.gradio/
+.claude/
+progress.json
+README.md
+README_TR.md
+WRITEUP.md
+LICENSE
+
+# Runtime copies of the lab files (image ships labdata/; main.py materializes them)
+secret.txt
+notes.txt
+root_only.txt
+.macarena_hidden
+.macarena_injection.txt

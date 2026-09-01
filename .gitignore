@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.gradio/
+.claude/
+logs/
+progress.json
+.DS_Store
+
+# Runtime copies of the lab files (canonical versions live in labdata/)
+/secret.txt
+/notes.txt
+/root_only.txt
+/.macarena_hidden
+/.macarena_injection.txt

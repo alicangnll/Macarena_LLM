@@ -1,0 +1,49 @@
+# MacarenaLLM lab. Default profile: CPU (GPT-2), root on purpose (challenge 5).
+#
+#   docker compose up --build          -> http://127.0.0.1:7860
+#
+# Variants (uncomment):
+#   GPU:      needs NVIDIA Container Toolkit AND a CUDA torch install, e.g.
+#             docker compose build --build-arg  (or edit requirements.txt to
+#             install torch from https://download.pytorch.org/whl/cu124), then
+#             uncomment the deploy.resources block + set MACARENA_MODEL=deepseek.
+#   Hardened: runs non-root, read-only root fs, no caps -- challenge 5 then
+#             FAILS with "permission denied", which is exactly the lesson.
+services:
+  app:
+    build: .
+    ports:
+      - "7860:7860"
+    environment:
+      # Override: deepseek | gpt2 | stub | any Hugging Face repo id
+      - MACARENA_MODEL=
+    volumes:
+      - hf-cache:/cache/huggingface   # model downloads survive restarts
+      - ./logs:/app/logs              # audit log readable from the host
+    mem_limit: 2g                     # GPT-2 on CPU is fine with 2 GB
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+    # ---- GPU variant (DeepSeek Coder 6.7B) ----
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    # mem_limit: 24g
+    # environment:
+    #   - MACARENA_MODEL=deepseek
+
+    # ---- Hardened variant (educational comparison) ----
+    # user: "1000:1000"
+    # read_only: true
+    # tmpfs:
+    #   - /tmp
+    # cap_drop:
+    #   - ALL
+
+volumes:
+  hf-cache:

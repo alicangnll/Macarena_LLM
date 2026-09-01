@@ -1,38 +1,52 @@
-# Temel Görüntü: Python 3.9'un daha hafif bir versiyonu olan slim-buster'ı kullanın
-# transformers ve torch gibi kütüphaneler için Python'ın belirli bir sürümüne ihtiyaç duyulabilir.
-FROM python:3.9-slim-buster
+# MacarenaLLM lab image.
+# python:3.11-slim-bookworm: buster is archived and gradio 5+ requires Python >= 3.10.
+# NOTE: the lab runs as root ON PURPOSE -- challenge 5 ("Root is Root") is the lesson.
+# The hardened alternative lives commented in docker-compose.yml.
+FROM python:3.11-slim-bookworm
 
-# Çalışma dizinini ayarlayın
+# Working directory
 WORKDIR /app
 
-# Gerekli sistem bağımlılıklarını yükleyin (eğer komutlar için gerekliyse)
-# Örneğin, iproute2 (ip addr için), net-tools (netstat için) vb.
-# Bu adım, yürütülen komutlara göre ayarlanmalıdır.
-RUN apt-get update && apt-get install -y \
+# System dependencies used by the lab's example commands:
+# procps (ps), iproute2 (ip), net-tools (netstat/ifconfig), file (file)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     iproute2 \
     net-tools \
-    # Diğer gerekli araçlar (örneğin, ifconfig için net-tools)
-    # python3-dev veya build-essential gibi paketler, bazı python kütüphaneleri derlenirken gerekebilir
+    file \
     && rm -rf /var/lib/apt/lists/*
 
-# Python bağımlılıklarını kopyalayın
-# requirements.txt dosyasını oluşturacağız
-COPY requirements.txt .
-
-# Python bağımlılıklarını yükleyin
-# --no-cache-dir: pip'in paketleri önbelleğe almasını engeller, bu da görüntü boyutunu azaltır
-# --upgrade pip: pip'i en son sürüme günceller
+# Python dependencies (CPU torch keeps the image ~200 MB instead of 2+ GB;
+# GPU users: see the GPU variant in docker-compose.yml)
+COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt \
+        --extra-index-url https://download.pytorch.org/whl/cpu
 
-# Uygulama kodunu kopyalayın
-COPY main.py .
+# Application code + canonical lab files
+COPY main.py ./
+COPY macarena ./macarena
+COPY labdata ./labdata
+COPY scripts ./scripts
 
-# Gradio'nun varsayılan portu olan 7860'ı açık bırakın
+# Env-exfiltration challenge flag + persistent model cache location
+ENV MACARENA_CHALLENGE_FLAG=MACARENA{3nv1r0nm3nt_l34k} \
+    HF_HOME=/cache/huggingface \
+    PYTHONUNBUFFERED=1
+
+# root_only.txt must be owner-only (git cannot store file modes);
+# main.py re-applies this on startup, the image bakes it in too.
+# Lab files are also materialized here so the hardened (read-only, non-root)
+# variant has them even though it cannot write to /app at runtime.
+RUN chmod 600 /app/labdata/root_only.txt && \
+    mkdir -p /app/logs /cache/huggingface && \
+    python -c "from macarena.challenges import ensure_lab_files; ensure_lab_files()"
+
+# Gradio's default port
 EXPOSE 7860
 
-# Uygulamayı başlatma komutu
-# Modelin yüklenmesi zaman alacağından, başlangıçta biraz beklemek faydalı olabilir, ancak doğrudan çalıştırın.
-# Python uygulamasını çalıştırın
+# No curl in slim images -- use python's urllib for the healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:7860/', timeout=5).status==200 else 1)"
+
 CMD ["python", "main.py"]
