@@ -53,7 +53,7 @@ Hints are available in the UI (Challenges tab). Flags are fixed and committed; e
 * **Dynamic Model Loading:** `deepseek-ai/deepseek-coder-6.7b-instruct` on CUDA GPUs **and** on Apple Silicon GPUs (MPS, float16 — auto-detected), `gpt2` on CPU, plus a `MACARENA_MODEL` override (`deepseek` / `gpt2` / any HF repo id / `stub` for UI development without a model).
 * **Runtime Model Switching:** the ⚙️ Model tab swaps models live — DeepSeek (default pick), GPT-2, Stub, or **any Hugging Face repo id you type** (`org/model`, case-sensitive). A failed load keeps the previous model active; downloads land in the `hf-cache` volume.
 * **Security Levels:** DVWA-style Low / Medium / High / Impossible with per-level defence descriptions.
-* **CTF Challenge Mode:** 6 flag challenges with progress tracking, hints and reset.
+* **CTF Challenge Mode:** 6 flag challenges with progress tracking, hints and reset. Flags are captured automatically (command output / model reply) or submitted by hand in the **🔑 Enter a flag manually** box in the Lab tab — typing a flag into the chat box never auto-solves.
 * **Indirect Prompt Injection:** naive-RAG file attachment (the "Poisoned Notes" scenario).
 * **OWASP LLM Top 10 coverage:** the challenges and guardrails map onto the OWASP LLM risks — see the table below.
 * **Consumption limits (LLM04):** oversized prompts are rejected before they reach the model; generation length, exec timeout and container memory are bounded.

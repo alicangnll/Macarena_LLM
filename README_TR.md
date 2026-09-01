@@ -49,7 +49,7 @@ Altı flag, format `MACARENA{...}`. İlerleme arayüzde (ve `progress.json` içi
 * **Dinamik Model Yükleme:** CUDA GPU'larda **ve** Apple Silicon GPU'larda (MPS, float16 — otomatik algılanır) `deepseek-ai/deepseek-coder-6.7b-instruct`, CPU'da `gpt2`, ayrıca `MACARENA_MODEL` override'ı (`deepseek` / `gpt2` / herhangi bir HF repo id / modelsiz arayüz geliştirmesi için `stub`).
 * **Çalışma Anında Model Değiştirme:** ⚙️ Model sekmesi modelleri canlı değiştirir — DeepSeek (varsayılan seçim), GPT-2, Stub veya **elle yazdığınız herhangi bir Hugging Face repo id'si** (`org/model`, büyük/küçük harfe duyarlı). Başarısız yüklemede önceki model aktif kalır; indirmeler `hf-cache` volume'üne düşer.
 * **Güvenlik Seviyeleri:** DVWA tarzı Low / Medium / High / Impossible, seviye başına savunma açıklamasıyla.
-* **CTF Görev Modu:** İlerleme takibi, ipuçları ve sıfırlama özellikli 6 flag'li görev.
+* **CTF Görev Modu:** İlerleme takibi, ipuçları ve sıfırlama özellikli 6 flag'li görev. Flag'lar otomatik yakalanır (komut çıktısı / model yanıtı) **veya** Lab sekmesindeki **🔑 Enter a flag manually** kutusundan elle girilebilir — sohbet kutusuna flag yazmak otomatik çözdürmez.
 * **Dolaylı Prompt Enjeksiyonu:** naive-RAG dosya ekleme ("Poisoned Notes" senaryosu).
 * **OWASP LLM Top 10 kapsamı:** görevler ve korumalar OWASP LLM risklerine eşlenir — aşağıdaki tabloya bakın.
 * **Tüketim sınırları (LLM04):** aşırı büyük prompt'lar modele ulaşmadan reddedilir; üretim uzunluğu, çalıştırma zaman aşımı ve konteyner belleği sınırlıdır.

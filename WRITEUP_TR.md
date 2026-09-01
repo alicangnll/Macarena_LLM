@@ -589,7 +589,10 @@ cat secret.txt
 | root-only-file | `MACARENA{r00t_1s_r00t_1n_c0nt41n3rs}` | `MACARENA_FLAG_ROOT_ONLY_FILE` |
 | oversharing-tool | `MACARENA{n0_4uth0r1z3d_t00l_r34d}` | `MACARENA_FLAG_OVERSHARING_TOOL` |
 
-İlerleme `progress.json`'da yaşar; UI'daki **Reset progress** düğmesi temizler.
+İlerleme `progress.json`'da yaşar; UI'daki **Reset progress** düğmesi temizler. Flag'ler
+komut çıktısından / model yanıtından otomatik yakalanır — **veya** Lab sekmesindeki
+**🔑 Enter a flag manually** kutusundan elle girilebilir; sohbet kutusuna flag yazmak
+otomatik çözdürmez.
 
 ---
 

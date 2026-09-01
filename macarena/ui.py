@@ -16,7 +16,7 @@ from typing import List, Optional, Tuple
 import gradio as gr
 
 from macarena.audit import AuditEvent, AuditLogger, read_events
-from macarena.challenges import CHALLENGES, ProgressStore, flag_for, match_challenges
+from macarena.challenges import CHALLENGES, ProgressStore, find_flags, flag_for, match_challenges
 from macarena.config import (
     AUDIT_LOG_PATH,
     DEEPSEEK_MODEL_ID,
@@ -376,6 +376,73 @@ def _interaction(
     )
 
 
+def _submit_flag(
+    submitted: str,
+    session_id: str,
+    progress: ProgressStore,
+    audit_logger: AuditLogger,
+) -> Tuple[str, str, str, str]:
+    """Manually submit a flag; returns the 4 UI updates.
+
+    Deliberate CTF-style entry: what the *user* types in the chat box never
+    auto-solves (detection only scans command output and the model reply) --
+    this box is the explicit way in. Submissions land in the audit log like
+    any other interaction.
+    """
+    text = (submitted or "").strip()
+    if not text:
+        return (
+            "⌨️ Type a flag first -- format `MACARENA{...}`.",
+            _badge(progress),
+            _challenges_table_md(progress),
+            "",
+        )
+
+    matches = match_challenges(text)
+    audit_logger.log(
+        AuditEvent(
+            ts=datetime.now(timezone.utc).isoformat(),
+            session_id=str(session_id),
+            level="manual",
+            user_input="[manual flag submission] " + text[:200],
+            expanded_prompt="",
+            files_inlined=[],
+            model_id="manual-entry",
+            llm_response="",
+            detected_command=None,
+            policy_action="none",
+            policy_reason="manual_flag_submission",
+            executed=False,
+            command_output="",
+            flags_found=sorted(matches),
+            error=None,
+        )
+    )
+
+    if not matches:
+        if find_flags(text):
+            result = "❌ No challenge matches that flag (wrong flag, or this install overrides it via env vars)."
+        else:
+            result = "❌ That does not look like a flag -- expected the `MACARENA{...}` format."
+        return result, _badge(progress), _challenges_table_md(progress), ""
+
+    new_solves = [c for c in matches.values() if progress.solve(c.id)]
+    already = [c for c in matches.values() if c not in new_solves]
+
+    lines = []
+    if new_solves:
+        lines.append("🎉 **Accepted** -- " + " · ".join(f"**{c.title}**: `{flag_for(c)}`" for c in new_solves))
+    if already:
+        lines.append("✔️ Already captured: " + " · ".join(f"**{c.title}**" for c in already))
+    result = "\n\n".join(lines)
+
+    new_flag_md = "\n\n".join(
+        f"🎉 **New flag captured** — {c.title}: `{flag_for(c)}`" for c in new_solves
+    )
+
+    return result, _badge(progress), _challenges_table_md(progress), new_flag_md
+
+
 def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: ProgressStore) -> gr.Blocks:
     slot = ClientSlot(client)  # lets the Model tab hot-swap the active client
 
@@ -400,6 +467,16 @@ def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: Progres
                             lines=3,
                             label="Type your message to the LLM (Try normal chat or Prompt Injection)",
                         )
+                        with gr.Accordion("🔑 Enter a flag manually", open=True):
+                            gr.Markdown(
+                                "Captured a flag outside the chat flow (e.g. from a container shell)? Enter it here.\n"
+                                "Note: typing a flag into the **chat box does not auto-solve** -- detection only scans "
+                                "command output and the model's reply; this box is the deliberate way in, and every "
+                                "submission is audited."
+                            )
+                            flag_input = gr.Textbox(label="Flag", placeholder="MACARENA{...}", max_lines=1)
+                            flag_submit_button = gr.Button("Submit flag", variant="primary")
+                            flag_result_md = gr.Markdown("")
                         gr.Examples(
                             examples=[[p] for p in EXAMPLE_PROMPTS],
                             inputs=user_input_textbox,
@@ -463,6 +540,9 @@ def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: Progres
         def run_interaction(user_input, level_value, session_id):
             return _interaction(user_input, level_value, session_id, slot.client, audit_logger, progress)
 
+        def run_flag_submission(submitted, session_id):
+            return _submit_flag(submitted, session_id, progress, audit_logger)
+
         load_model_button.click(
             lambda preset, custom: _load_model(slot, preset, custom),
             inputs=[model_preset_radio, custom_model_textbox],
@@ -492,6 +572,9 @@ def build_blocks(client: LLMClient, audit_logger: AuditLogger, progress: Progres
             return _badge(progress), _challenges_table_md(progress), ""
 
         reset_button.click(reset_progress, outputs=[badge_md, challenges_md, new_flag_md])
+        flag_outputs = [flag_result_md, badge_md, challenges_md, new_flag_md]
+        flag_submit_button.click(run_flag_submission, inputs=[flag_input, session_state], outputs=flag_outputs)
+        flag_input.submit(run_flag_submission, inputs=[flag_input, session_state], outputs=flag_outputs)
         refresh_audit_button.click(lambda: _audit_rows(), outputs=audit_df)
 
     return demo
