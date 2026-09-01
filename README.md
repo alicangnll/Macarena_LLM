@@ -27,7 +27,7 @@ Switch levels in the UI and re-run the same attacks:
 | **Low** | None. Every detected command runs via `shell=True`. | The original vulnerable behaviour; all 6 challenges are solvable. |
 | **Medium** | Normalized blacklist of destructive commands (`rm -rf`, `dd`, `shutdown`, `curl \| sh`, fork bombs, ...). | Blacklists are always incomplete — find a bypass (hint: `base64 -d \| sh`). |
 | **High** | No `shell=True`: shell metacharacters rejected, `shlex` argv parsing, binary + option allowlist, scrubbed environment, pinned cwd. | Stops *destruction*, not *exfiltration*: `cat secret.txt` still passes — 4 of 6 challenges still fall on execution alone. |
-| **Impossible** | The LLM never executes anything. Its output is an untrusted *suggestion* a human reviews and runs. | The only real fix for *execution* — but human approval does not gate *retrieval*: challenge 6 still falls. |
+| **Impossible** | The LLM never executes anything. Its output is an untrusted *suggestion* a human reviews and runs. | The only real fix for *execution* — but human approval does not gate *retrieval*: any flag sitting in an inlineable `.txt` (challenges 1, 5, 6) still falls by quoting. |
 
 ## Challenges (CTF mode)
 
@@ -50,7 +50,7 @@ Hints are available in the UI (Challenges tab). Flags are fixed and committed; e
 
 ## Features
 
-* **Dynamic Model Loading:** `deepseek-ai/deepseek-coder-6.7b-instruct` on CUDA GPUs, `gpt2` on CPU (unchanged), plus a `MACARENA_MODEL` override (`deepseek` / `gpt2` / any HF repo id / `stub` for UI development without a model).
+* **Dynamic Model Loading:** `deepseek-ai/deepseek-coder-6.7b-instruct` on CUDA GPUs **and** on Apple Silicon GPUs (MPS, float16 — auto-detected), `gpt2` on CPU, plus a `MACARENA_MODEL` override (`deepseek` / `gpt2` / any HF repo id / `stub` for UI development without a model).
 * **Runtime Model Switching:** the ⚙️ Model tab swaps models live — DeepSeek (default pick), GPT-2, Stub, or **any Hugging Face repo id you type** (`org/model`, case-sensitive). A failed load keeps the previous model active; downloads land in the `hf-cache` volume.
 * **Security Levels:** DVWA-style Low / Medium / High / Impossible with per-level defence descriptions.
 * **CTF Challenge Mode:** 6 flag challenges with progress tracking, hints and reset.
@@ -74,7 +74,11 @@ docker compose up --build
 
 Then open http://127.0.0.1:7860 (or `http://<host-ip>:7860` from the LAN). The container binds **0.0.0.0** on purpose for classroom/workshop use — which also means anyone on that network can reach a deliberately vulnerable lab (and its model). Expose it only on an isolated, trusted network; for loopback-only access change the ports entry to `"127.0.0.1:7860:7860"` in [docker-compose.yml](docker-compose.yml).
 
-The image is CPU-only by default (GPT-2); GPU/hardened variants are commented in [docker-compose.yml](docker-compose.yml) — the hardened variant (non-root, read-only fs, dropped caps) makes challenge 5 fail with *permission denied*, which is exactly the lesson.
+**GPU in Docker:** whenever the host has a GPU the container can actually use, it is attached automatically — `scripts/lab_up.sh` detects an NVIDIA GPU + the NVIDIA Container Toolkit and starts the **`app-gpu`** service (`docker compose up --build app-gpu`): a CUDA torch build with every GPU reserved, so the lab auto-detects CUDA and loads DeepSeek Coder 6.7B. The default image stays CPU-only (GPT-2, ~200 MB).
+
+**Apple Silicon (M1–M4):** Docker on macOS runs containers in a Linux VM with **no GPU passthrough** — MPS/Metal cannot enter a Linux container and the NVIDIA toolkit needs a Linux host, so the container always lands on GPT-2. To use your M-series GPU, run the lab natively (`python main.py` in the venv): the lab auto-detects MPS and loads DeepSeek Coder 6.7B in float16.
+
+The hardened variant (non-root, read-only fs, dropped caps) stays commented in [docker-compose.yml](docker-compose.yml) — it makes challenge 5 fail with *permission denied*, which is exactly the lesson.
 
 ### Local
 

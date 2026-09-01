@@ -15,6 +15,10 @@ class LLMError(Exception):
     pass
 
 
+# Human-readable device names (0 = CUDA GPU, "mps" = Apple Silicon GPU, -1 = CPU)
+DEVICE_LABELS = {0: "GPU (CUDA)", "mps": "GPU (Apple MPS)"}
+
+
 class LLMLoadError(LLMError):
     pass
 
@@ -26,9 +30,12 @@ def load_pipeline(spec: ModelSpec):
 
     dtype = None
     if spec.torch_dtype == "bfloat16":
-        dtype = torch.bfloat16  # memory efficiency and speed on newer GPUs
+        dtype = torch.bfloat16  # memory efficiency and speed on newer CUDA GPUs
+    elif spec.torch_dtype == "float16":
+        dtype = torch.float16   # Apple MPS: bfloat16 support is patchy -- fp16 is the safe path
 
-    print(f"Loading '{spec.model_id}' model... Device: {'GPU' if spec.device != -1 else 'CPU'}")
+    device_label = DEVICE_LABELS.get(spec.device, "CPU")
+    print(f"Loading '{spec.model_id}' model... Device: {device_label}")
     try:
         # Load the model with appropriate dtype and device settings
         return hf_pipeline("text-generation", model=spec.model_id, torch_dtype=dtype, device=spec.device)

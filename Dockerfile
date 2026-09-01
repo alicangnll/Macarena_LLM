@@ -16,12 +16,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     file \
     && rm -rf /var/lib/apt/lists/*
 
-# Python dependencies (CPU torch keeps the image ~200 MB instead of 2+ GB;
-# GPU users: see the GPU variant in docker-compose.yml)
+# Python dependencies. TORCH_INDEX_URL picks the torch flavour:
+#   default  https://download.pytorch.org/whl/cpu -> CPU wheels (~200 MB image)
+#   GPU      override with "" -> plain PyPI Linux wheels (CUDA-bundled, 2+ GB)
+# The GPU path is wired up by the `app-gpu` service in docker-compose.yml /
+# scripts/lab_up.sh ("attach the GPU to Docker whenever one is detected").
+# NOTE: Apple Silicon (MPS/Metal) CANNOT be passed into Docker -- macOS
+# containers run in a Linux VM with no GPU. On a Mac the lab auto-detects MPS
+# when run natively (python main.py) instead.
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
 COPY requirements.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt \
-        --extra-index-url https://download.pytorch.org/whl/cpu
+RUN if [ -n "$TORCH_INDEX_URL" ]; then TORCH_FLAGS="--extra-index-url $TORCH_INDEX_URL"; else TORCH_FLAGS=""; fi && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt $TORCH_FLAGS
 
 # Application code + canonical lab files
 COPY main.py ./

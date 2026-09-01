@@ -47,8 +47,8 @@ class ModelSpec:
     """Everything the lab needs to know about the selected model."""
 
     model_id: str
-    device: int           # 0 = first GPU, -1 = CPU (same convention as the original code)
-    torch_dtype: Any      # "bfloat16" or None; resolved to torch.bfloat16 lazily in llm.py
+    device: Any           # 0 = first CUDA GPU, "mps" = Apple Silicon GPU, -1 = CPU
+    torch_dtype: Any      # "bfloat16" / "float16" / None; resolved to torch dtypes lazily in llm.py
     max_new_tokens: int
     is_instruct: bool     # True -> instruction-style prompt (DeepSeek), False -> raw input (GPT-2/stub)
 
@@ -56,6 +56,14 @@ class ModelSpec:
 def _default_cuda_check() -> bool:
     import torch  # lazy: only touched when a model is actually selected
     return torch.cuda.is_available()
+
+
+def _default_mps_check() -> bool:
+    try:
+        import torch  # lazy: only touched when a model is actually selected
+    except ImportError:  # torch not installed -> certainly no GPU (test/CI venvs)
+        return False
+    return torch.backends.mps.is_available()
 
 
 # Human-friendly aliases accepted via MACARENA_MODEL / resolve_model_spec(override=...)
@@ -69,11 +77,13 @@ _ALIASES = {
 def resolve_model_spec(
     override: Optional[str] = None,
     cuda_available: Optional[Callable[[], bool]] = None,
+    mps_available: Optional[Callable[[], bool]] = None,
 ) -> ModelSpec:
     """Resolve which model to run.
 
-    Precedence: explicit override > MACARENA_MODEL env var > CUDA detection
-    (the original lab's dynamic behaviour). Accepted values: ``deepseek``,
+    Precedence: explicit override > MACARENA_MODEL env var > hardware detection
+    (CUDA first, then Apple MPS, then CPU -- the original lab's dynamic
+    behaviour, extended to Apple Silicon). Accepted values: ``deepseek``,
     ``gpt2``, ``stub`` or any full Hugging Face repo id. Alias matching is
     case-insensitive, but a repo id keeps its original casing (HF ids are
     case-sensitive, e.g. ``Qwen/Qwen2.5-Coder-1.5B-Instruct``).
@@ -85,6 +95,15 @@ def resolve_model_spec(
         choice = _ALIASES.get(lowered, raw)  # alias -> canonical id; else keep the user's casing
 
     cuda = cuda_available if cuda_available is not None else _default_cuda_check
+    mps = mps_available if mps_available is not None else _default_mps_check
+
+    def _gpu() -> tuple:
+        """Pick the best GPU: CUDA beats MPS. Returns (device, torch_dtype)."""
+        if cuda():
+            return 0, "bfloat16"   # memory efficiency and speed on CUDA GPUs
+        if mps():
+            return "mps", "float16"  # MPS bfloat16 support is patchy -- fp16 is the safe path
+        return -1, None
 
     if choice == STUB_MODEL_ID:
         return ModelSpec(STUB_MODEL_ID, device=-1, torch_dtype=None, max_new_tokens=200, is_instruct=False)
@@ -93,19 +112,23 @@ def resolve_model_spec(
         return ModelSpec(GPT2_MODEL_ID, device=-1, torch_dtype=None, max_new_tokens=100, is_instruct=False)
 
     if choice == DEEPSEEK_MODEL_ID:
-        if cuda():
-            return ModelSpec(DEEPSEEK_MODEL_ID, device=0, torch_dtype="bfloat16", max_new_tokens=200, is_instruct=True)
-        print("WARNING: DeepSeek Coder explicitly requested without a CUDA GPU -- it will run on CPU (unusably slow).")
+        device, dtype = _gpu()
+        if device != -1:
+            return ModelSpec(DEEPSEEK_MODEL_ID, device=device, torch_dtype=dtype, max_new_tokens=200, is_instruct=True)
+        print("WARNING: DeepSeek Coder explicitly requested without a GPU -- it will run on CPU (unusably slow).")
         return ModelSpec(DEEPSEEK_MODEL_ID, device=-1, torch_dtype=None, max_new_tokens=200, is_instruct=True)
 
     if choice:  # arbitrary Hugging Face repo id
-        if cuda():
-            return ModelSpec(choice, device=0, torch_dtype="bfloat16", max_new_tokens=200, is_instruct=True)
-        return ModelSpec(choice, device=-1, torch_dtype=None, max_new_tokens=200, is_instruct=True)
+        device, dtype = _gpu()
+        return ModelSpec(choice, device=device, torch_dtype=dtype, max_new_tokens=200, is_instruct=True)
 
     # Default: the original dynamic selection
-    if cuda():
+    device, dtype = _gpu()
+    if device == 0:
         print("Compatible GPU detected. Loading 'deepseek-ai/deepseek-coder-6.7b-instruct' model.")
-        return ModelSpec(DEEPSEEK_MODEL_ID, device=0, torch_dtype="bfloat16", max_new_tokens=200, is_instruct=True)
+        return ModelSpec(DEEPSEEK_MODEL_ID, device=device, torch_dtype=dtype, max_new_tokens=200, is_instruct=True)
+    if device == "mps":
+        print("Apple Silicon GPU (MPS) detected. Loading 'deepseek-ai/deepseek-coder-6.7b-instruct' model.")
+        return ModelSpec(DEEPSEEK_MODEL_ID, device=device, torch_dtype=dtype, max_new_tokens=200, is_instruct=True)
     print("Compatible GPU not found. Loading 'gpt2' model.")
     return ModelSpec(GPT2_MODEL_ID, device=-1, torch_dtype=None, max_new_tokens=100, is_instruct=False)

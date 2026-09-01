@@ -23,7 +23,7 @@ Seviyeyi arayüzden değiştirip aynı saldırıları tekrarlayın:
 | **Low** | Yok. Tespit edilen her komut `shell=True` ile çalışır. | Orijinal zafiyetli davranış; 6 görevin tamamı çözülebilir. |
 | **Medium** | Yıkıcı komutların normalize edilmiş blacklist'i (`rm -rf`, `dd`, `shutdown`, `curl \| sh`, fork bombası, ...). | Blacklist'ler her zaman eksiktir — bir bypass bulun (ipucu: `base64 -d \| sh`). |
 | **High** | `shell=True` yok: shell metakarakterleri reddedilir, `shlex` ile argv ayrıştırma, binary + opsiyon allowlist'i, temizlenmiş ortam, sabit çalışma dizini. | *Yıkımı* durdurur, *sızdırmayı* durduramaz: `cat secret.txt` hâlâ geçer — 6 görevin 4'ü yalnızca çalıştırmayla düşmeye devam eder. |
-| **Impossible** | LLM hiçbir şey çalıştırmaz. Çıktısı, bir insanın inceleyip kendisinin çalıştıracağı güvenilmez bir *öneridir*. | *Çalıştırma* için tek gerçek çözüm — ama insan onayı *getirme*'yi (retrieval) engellemez: 6. görev yine düşer. |
+| **Impossible** | LLM hiçbir şey çalıştırmaz. Çıktısı, bir insanın inceleyip kendisinin çalıştıracağı güvenilmez bir *öneridir*. | *Çalıştırma* için tek gerçek çözüm — ama insan onayı *getirme*'yi (retrieval) engellemez: inline edilebilir bir `.txt` içindeki her flag (1, 5, 6. görevler) alıntı yoluyla yine düşer. |
 
 ## Görevler (CTF modu)
 
@@ -46,7 +46,7 @@ Altı flag, format `MACARENA{...}`. İlerleme arayüzde (ve `progress.json` içi
 
 ## Özellikler
 
-* **Dinamik Model Yükleme:** CUDA GPU'da `deepseek-ai/deepseek-coder-6.7b-instruct`, CPU'da `gpt2` (değişmedi), ayrıca `MACARENA_MODEL` override'ı (`deepseek` / `gpt2` / herhangi bir HF repo id / modelsiz arayüz geliştirmesi için `stub`).
+* **Dinamik Model Yükleme:** CUDA GPU'larda **ve** Apple Silicon GPU'larda (MPS, float16 — otomatik algılanır) `deepseek-ai/deepseek-coder-6.7b-instruct`, CPU'da `gpt2`, ayrıca `MACARENA_MODEL` override'ı (`deepseek` / `gpt2` / herhangi bir HF repo id / modelsiz arayüz geliştirmesi için `stub`).
 * **Çalışma Anında Model Değiştirme:** ⚙️ Model sekmesi modelleri canlı değiştirir — DeepSeek (varsayılan seçim), GPT-2, Stub veya **elle yazdığınız herhangi bir Hugging Face repo id'si** (`org/model`, büyük/küçük harfe duyarlı). Başarısız yüklemede önceki model aktif kalır; indirmeler `hf-cache` volume'üne düşer.
 * **Güvenlik Seviyeleri:** DVWA tarzı Low / Medium / High / Impossible, seviye başına savunma açıklamasıyla.
 * **CTF Görev Modu:** İlerleme takibi, ipuçları ve sıfırlama özellikli 6 flag'li görev.
@@ -70,7 +70,11 @@ docker compose up --build
 
 Ardından http://127.0.0.1:7860 adresini açın (LAN'dan `http://<sunucu-ip>:7860`). Konteyner, sınıf/atölye kullanımı için bilinçli olarak **0.0.0.0**'a bağlanır — bu, o ağdaki herkesin bilinçli olarak zafiyetli bir lab'a (ve modeline) erişebileceği anlamına gelir. Yalnızca izole, güvenilir bir ağda açık tutun; yalnızca loopback erişimi için [docker-compose.yml](docker-compose.yml) içindeki ports satırını `"127.0.0.1:7860:7860"` yapın.
 
-İmaj varsayılan olarak CPU'dur (GPT-2); GPU ve hardened varyantları [docker-compose.yml](docker-compose.yml) içinde yorumlu olarak hazır — hardened varyant (non-root, salt-okunur fs, düşürülmüş yetenekler) 5. görevi *permission denied* ile başarısız kılar; ders tam olarak budur.
+**Docker'da GPU:** host'un konteynerin gerçekten kullanabileceği bir GPU'su varsa otomatik bağlanır — `scripts/lab_up.sh`, bir NVIDIA GPU + NVIDIA Container Toolkit algıladığında **`app-gpu`** servisini başlatır (`docker compose up --build app-gpu`): CUDA torch kurulumu ve tüm GPU'lar rezerve edilir; lab CUDA'yı algılar ve DeepSeek Coder 6.7B'yi yükler. Varsayılan imaj CPU'da kalır (GPT-2, ~200 MB).
+
+**Apple Silicon (M1–M4):** macOS'ta Docker, konteynerleri GPU geçişi **olmayan** bir Linux VM'inde çalıştırır — MPS/Metal bir Linux konteynerine giremez ve NVIDIA toolkit'i Linux host ister; bu yüzden konteyner her zaman GPT-2'ye düşer. M-serisi GPU'nuzu kullanmak için labı **native** çalıştırın (venv içinde `python main.py`): lab MPS'yi otomatik algılar ve DeepSeek Coder 6.7B'yi float16 ile yükler.
+
+Hardened varyant (non-root, salt-okunur fs, düşürülmüş yetenekler) [docker-compose.yml](docker-compose.yml) içinde yorumlu olarak hazır — 5. görevi *permission denied* ile başarısız kılar; ders tam olarak budur.
 
 ### Yerel
 

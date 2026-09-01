@@ -1,6 +1,9 @@
 # MacarenaLLM lab. Default profile: CPU (GPT-2), root on purpose (challenge 5).
 #
 #   docker compose up --build          -> http://<this-host>:7860 (all interfaces)
+#   scripts/lab_up.sh                  -> same, but starts the GPU service when
+#                                         a GPU the container can actually use is
+#                                         detected (Linux + NVIDIA toolkit)
 #
 # The interface binds 0.0.0.0 on purpose (classroom/workshop use) so students
 # can reach the lab from the local network. This is a DELIBERATELY VULNERABLE
@@ -8,13 +11,14 @@
 # in the README -- a network-reachable lab also shares its model and files).
 # Loopback-only? Use:  ports: ["127.0.0.1:7860:7860"]
 #
-# Variants (uncomment):
-#   GPU:      needs NVIDIA Container Toolkit AND a CUDA torch install, e.g.
-#             docker compose build --build-arg  (or edit requirements.txt to
-#             install torch from https://download.pytorch.org/whl/cu124), then
-#             uncomment the deploy.resources block + set MACARENA_MODEL=deepseek.
-#   Hardened: runs non-root, read-only root fs, no caps -- challenge 5 then
-#             FAILS with "permission denied", which is exactly the lesson.
+# Variants:
+#   GPU (app-gpu service below): full CUDA wiring -- CUDA torch build + all
+#     NVIDIA devices reserved. Needs a Linux host with an NVIDIA GPU and the
+#     NVIDIA Container Toolkit. Apple Silicon CANNOT use it: macOS containers
+#     run in a Linux VM with no GPU (no MPS/Metal passthrough exists); on a
+#     Mac run natively instead (python main.py auto-detects MPS).
+#   Hardened (commented in `app`): runs non-root, read-only root fs, no caps
+#     -- challenge 5 then FAILS with "permission denied", which is the lesson.
 services:
   app:
     build: .
@@ -34,18 +38,6 @@ services:
     security_opt:
       - no-new-privileges:true
 
-    # ---- GPU variant (DeepSeek Coder 6.7B) ----
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
-    # mem_limit: 24g
-    # environment:
-    #   - MACARENA_MODEL=deepseek
-
     # ---- Hardened variant (educational comparison) ----
     # user: "1000:1000"
     # read_only: true
@@ -53,6 +45,35 @@ services:
     #   - /tmp
     # cap_drop:
     #   - ALL
+
+  # ---- GPU variant: `docker compose up --build app-gpu` (or scripts/lab_up.sh) ----
+  # CUDA torch install (TORCH_INDEX_URL="" -> PyPI CUDA wheels) + every NVIDIA
+  # GPU attached; the app then auto-detects CUDA and loads DeepSeek Coder 6.7B.
+  app-gpu:
+    build:
+      context: .
+      args:
+        TORCH_INDEX_URL: ""           # empty -> no CPU index -> PyPI CUDA wheels
+    profiles: ["gpu"]
+    ports:
+      - "0.0.0.0:7860:7860"
+    environment:
+      - MACARENA_MODEL=deepseek
+      - MACARENA_SERVER_NAME=0.0.0.0
+    volumes:
+      - hf-cache:/cache/huggingface
+      - ./logs:/app/logs
+    mem_limit: 24g                    # DeepSeek Coder 6.7B needs the headroom
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
 volumes:
   hf-cache:

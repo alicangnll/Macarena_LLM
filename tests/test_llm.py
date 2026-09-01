@@ -116,6 +116,40 @@ def test_alias_matching_stays_case_insensitive():
     assert resolve_model_spec("DeepSeek", cuda_available=lambda: False).model_id == DEEPSEEK_MODEL_ID
 
 
+# --- Apple Silicon (MPS) detection: CUDA > MPS > CPU ----------------------------
+def test_default_mps_selects_deepseek_on_mps():
+    spec = resolve_model_spec(cuda_available=lambda: False, mps_available=lambda: True)
+    assert spec.model_id == DEEPSEEK_MODEL_ID
+    assert spec.device == "mps" and spec.torch_dtype == "float16" and spec.is_instruct is True
+
+
+def test_cuda_beats_mps():
+    spec = resolve_model_spec(cuda_available=lambda: True, mps_available=lambda: True)
+    assert spec.device == 0 and spec.torch_dtype == "bfloat16"
+
+
+def test_explicit_gpt2_stays_cpu_even_with_mps():
+    spec = resolve_model_spec("gpt2", cuda_available=lambda: False, mps_available=lambda: True)
+    assert spec.device == -1
+
+
+def test_explicit_deepseek_uses_mps_when_present():
+    spec = resolve_model_spec("deepseek", cuda_available=lambda: False, mps_available=lambda: True)
+    assert spec.device == "mps" and spec.torch_dtype == "float16"
+
+
+def test_custom_hf_id_uses_mps_when_present():
+    spec = resolve_model_spec(
+        "Qwen/Qwen2.5-Coder-1.5B-Instruct", cuda_available=lambda: False, mps_available=lambda: True
+    )
+    assert spec.device == "mps"
+
+
+def test_default_mps_detection_message(capsys):
+    resolve_model_spec(cuda_available=lambda: False, mps_available=lambda: True)
+    assert "MPS" in capsys.readouterr().out
+
+
 # --- ClientSlot (runtime model swapping) --------------------------------------
 def test_client_slot_swaps_the_active_client(monkeypatch):
     import macarena.llm as llm_mod

@@ -170,7 +170,7 @@ def _validate_high(command: str) -> PolicyDecision:
 LEVEL_DESCRIPTIONS = {
     SecurityLevel.LOW: (
         "**🟥 Low** -- No filtering: the original vulnerable behaviour. Every detected command "
-        "runs with `shell=True`. Start here; all 5 challenges are solvable."
+        "runs with `shell=True`. Start here; all 6 challenges are solvable."
     ),
     SecurityLevel.MEDIUM: (
         "**🟧 Medium** -- A normalized blacklist blocks the obvious destructive commands "
@@ -181,12 +181,12 @@ LEVEL_DESCRIPTIONS = {
         "**🟨 High** -- No `shell=True` at all: shell metacharacters rejected, `shlex` parsing, "
         "binary + option allowlist, scrubbed environment. Destructive commands die here -- "
         "**but file reads like `cat secret.txt` still pass. Removing the shell does NOT stop "
-        "prompt injection.** 4 of 5 challenges remain solvable."
+        "prompt injection.** 4 of 6 challenges still fall on execution alone."
     ),
     SecurityLevel.IMPOSSIBLE: (
         "**🟩 Impossible** -- The LLM never executes anything. Its output is treated as an "
         "untrusted *suggestion* that a human reviews and runs themselves. This is the only "
-        "level where prompt injection truly fails."
+        "level where prompt injection *execution* fails -- disclosure still needs its own defences."
     ),
 }
 

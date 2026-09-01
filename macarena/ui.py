@@ -28,7 +28,7 @@ from macarena.config import (
 )
 from macarena.context import inline_files
 from macarena.executor import execute
-from macarena.llm import LLMLoadError, LLMClient, ClientSlot
+from macarena.llm import DEVICE_LABELS, LLMLoadError, LLMClient, ClientSlot
 from macarena.parser import extract_command
 from macarena.policy import LEVEL_DESCRIPTIONS, SecurityLevel, validate
 
@@ -173,7 +173,7 @@ def _audit_rows() -> List[List]:
 
 MODEL_PRESETS = [
     ("GPT-2 — CPU fallback (container default)", GPT2_MODEL_ID),
-    ("DeepSeek Coder 6.7B Instruct — primary model (needs a GPU)", DEEPSEEK_MODEL_ID),
+    ("DeepSeek Coder 6.7B Instruct — primary model (needs a CUDA or Apple MPS GPU)", DEEPSEEK_MODEL_ID),
     ("Stub — deterministic fake model, no download", STUB_MODEL_ID),
     ("Custom — use the Hugging Face id I typed below", "custom"),
 ]
@@ -182,13 +182,17 @@ MODEL_TAB_MD = """### ⚙️ Swap the model at runtime
 
 Pick a preset or type **any Hugging Face repo id** (`org/model`) and press
 **Load model**. The download happens on first use and lands in the `hf-cache`
-volume, so it survives restarts.
+volume, so it survives restarts. GPUs are auto-detected at startup and at every
+load: CUDA first, then Apple MPS (float16), else CPU.
 
 ⚠️ **Notes:**
 - Loading happens inside this request — a big model takes **minutes on CPU**.
 - Anyone who can reach this page can trigger a multi-GB download and use the
   loaded model: unbounded consumption + model exposure (OWASP LLM04 / LLM10).
   Keep the lab on an isolated, trusted network.
+- Docker on Apple Silicon has **no GPU passthrough** (macOS containers live in
+  a Linux VM) — the container always lands on CPU/GPT-2. Run natively
+  (`python main.py`) to use the M-series GPU via MPS.
 - A failed load keeps the **previous** model active — the lab never breaks.
 - HF ids are case-sensitive (`Qwen/Qwen2.5-Coder-1.5B-Instruct`, not `qwen/...`).
 """
@@ -196,7 +200,7 @@ volume, so it survives restarts.
 
 def _model_status_md(slot) -> str:
     spec = slot.client.spec
-    device = "GPU" if spec.device != -1 else "CPU"
+    device = DEVICE_LABELS.get(spec.device, "CPU")
     kind = "instruction-tuned" if spec.is_instruct else "base/completion"
     return (
         f"**Active model:** `{spec.model_id}` · {device} · {kind} · "
