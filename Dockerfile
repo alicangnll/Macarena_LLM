@@ -29,10 +29,14 @@ COPY macarena ./macarena
 COPY labdata ./labdata
 COPY scripts ./scripts
 
-# Env-exfiltration challenge flag + persistent model cache location
+# Env-exfiltration challenge flag + persistent model cache location.
+# MACARENA_SERVER_NAME=0.0.0.0: the app must bind all interfaces INSIDE the
+# container for the published port to reach it (workshop/classroom use).
+# main.py prints a loud warning whenever it binds beyond the loopback.
 ENV MACARENA_CHALLENGE_FLAG=MACARENA{3nv1r0nm3nt_l34k} \
     HF_HOME=/cache/huggingface \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    MACARENA_SERVER_NAME=0.0.0.0
 
 # root_only.txt must be owner-only (git cannot store file modes);
 # main.py re-applies this on startup, the image bakes it in too.

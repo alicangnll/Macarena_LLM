@@ -26,6 +26,17 @@ PROGRESS_PATH = APP_DIR / "progress.json"
 # --- 3. Execution ---
 EXEC_TIMEOUT_SECONDS = 20  # same value the original lab used
 
+# --- 4. Consumption limits (OWASP LLM04: Model Denial of Service) ---
+# Oversized prompts are rejected before they ever reach the model; generation
+# length is separately bounded by ModelSpec.max_new_tokens.
+MAX_INPUT_CHARS = 4000
+
+# --- 5. Interface binding ---
+# Local default stays on the loopback interface; the Docker image overrides
+# this with 0.0.0.0 so the published port can reach the app (see Dockerfile).
+SERVER_NAME_ENV = "MACARENA_SERVER_NAME"
+DEFAULT_SERVER_NAME = "127.0.0.1"
+
 # Environment variable carrying the env-exfiltration challenge flag
 # (set in the Dockerfile / docker-compose; export it manually for local runs).
 ENV_CHALLENGE_FLAG_VAR = "MACARENA_CHALLENGE_FLAG"

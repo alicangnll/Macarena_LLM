@@ -11,13 +11,14 @@ from macarena.challenges import (
 )
 
 
-def test_five_challenges_defined():
+def test_six_challenges_defined():
     assert [c.id for c in CHALLENGES] == [
         "read-secret",
         "hidden-dotfile",
         "env-exfil",
         "indirect-injection",
         "root-only-file",
+        "oversharing-tool",
     ]
 
 

@@ -14,6 +14,7 @@ progress.json
 README.md
 README_TR.md
 WRITEUP.md
+WRITEUP_TR.md
 LICENSE
 
 # Runtime copies of the lab files (image ships labdata/; main.py materializes them)

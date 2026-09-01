@@ -7,11 +7,12 @@
 """
 from __future__ import annotations
 
+import os
 import sys
 
 from macarena.audit import AuditLogger
 from macarena.challenges import ProgressStore, ensure_lab_files
-from macarena.config import STUB_MODEL_ID, resolve_model_spec
+from macarena.config import DEFAULT_SERVER_NAME, SERVER_NAME_ENV, STUB_MODEL_ID, resolve_model_spec
 from macarena.llm import LLMClient, LLMLoadError, StubClient
 from macarena.ui import build_blocks
 
@@ -45,8 +46,14 @@ def main() -> None:
 
     print("\n--- Launching Gradio Interface ---")
     print("Access the interface by visiting the 'Running on local URL' address below.")
-    # share=False ensures the interface is only accessible locally (security best practice)
-    demo.launch(share=False)
+    # share=False: never create a public gradio.live tunnel (security best practice).
+    # Binding stays on loopback by default; the Docker image sets
+    # MACARENA_SERVER_NAME=0.0.0.0 so the published port can reach the app.
+    server_name = os.environ.get(SERVER_NAME_ENV, DEFAULT_SERVER_NAME)
+    if server_name not in ("127.0.0.1", "localhost", "::1"):
+        print(f"!!! WARNING: binding to {server_name} -- the lab is reachable from the network. !!!")
+        print("!!! A vulnerable lab must only be exposed on an isolated, trusted network. !!!")
+    demo.launch(share=False, server_name=server_name)
 
 
 if __name__ == "__main__":

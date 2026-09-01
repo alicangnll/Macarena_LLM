@@ -1,6 +1,12 @@
 # MacarenaLLM lab. Default profile: CPU (GPT-2), root on purpose (challenge 5).
 #
-#   docker compose up --build          -> http://127.0.0.1:7860
+#   docker compose up --build          -> http://<this-host>:7860 (all interfaces)
+#
+# The interface binds 0.0.0.0 on purpose (classroom/workshop use) so students
+# can reach the lab from the local network. This is a DELIBERATELY VULNERABLE
+# lab: only expose it on an isolated, trusted network (see OWASP LLM10 note
+# in the README -- a network-reachable lab also shares its model and files).
+# Loopback-only? Use:  ports: ["127.0.0.1:7860:7860"]
 #
 # Variants (uncomment):
 #   GPU:      needs NVIDIA Container Toolkit AND a CUDA torch install, e.g.
@@ -13,10 +19,13 @@ services:
   app:
     build: .
     ports:
-      - "7860:7860"
+      - "0.0.0.0:7860:7860"          # all interfaces (workshop default)
     environment:
       # Override: deepseek | gpt2 | stub | any Hugging Face repo id
       - MACARENA_MODEL=
+      # Bind the gradio server on all interfaces inside the container so the
+      # published port above can reach it (the local default is 127.0.0.1).
+      - MACARENA_SERVER_NAME=0.0.0.0
     volumes:
       - hf-cache:/cache/huggingface   # model downloads survive restarts
       - ./logs:/app/logs              # audit log readable from the host

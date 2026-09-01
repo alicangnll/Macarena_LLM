@@ -4,9 +4,9 @@
 
 **MacarenaLLM**, Büyük Dil Modelleri'ndeki (LLM) **Prompt Enjeksiyonu zafiyetlerini** keşfetmek ve deneyimlemek için tasarlanmış interaktif bir laboratuvar ortamıdır — DVWA ve PortSwigger'ın Web LLM laboratuvarları ruhunda. LLM'e doğal dilde konuşursunuz; modelin çıktısında komut tespit edildiğinde lab bu komutu işletim sisteminde **gerçekten çalıştırır**.
 
-Lab ortamının donanımına göre dinamik olarak daha gelişmiş bir model olan **DeepSeek Coder 6.7B Instruct** (GPU algılandığında) veya daha hafif olan **GPT-2** (CPU kullanıldığında) yüklenir. Bir **güvenlik seviyesi** seçin (Low / Medium / High / Impossible), ardından **5 capture-the-flag görevini** çözmeyi deneyin — savunmaları yükselttikçe hangi saldırıların düşmeye devam ettiğine bakın.
+Lab ortamının donanımına göre dinamik olarak daha gelişmiş bir model olan **DeepSeek Coder 6.7B Instruct** (GPU algılandığında) veya daha hafif olan **GPT-2** (CPU kullanıldığında) yüklenir. Bir **güvenlik seviyesi** seçin (Low / Medium / High / Impossible), ardından **6 capture-the-flag görevini** çözmeyi deneyin — savunmaları yükselttikçe hangi saldırıların düşmeye devam ettiğine bakın.
 
-> **Bu labın var olma nedeni olan temel ders:** **High** seviyesinde *hiç shell yoktur* (komutlar `shlex` ile argv'e ayrılır, binary ve opsiyonlar allowlist'ten geçer, ortam temizlenir) — ve buna rağmen **prompt injection dosyalarınızı okumaya devam eder**. `rm -rf /` ölür; `cat secret.txt` geçer. `shell=True`'i kaldırmak shell *sözdizimini* kaldırır, saldırganın *argümanlar* üzerindeki kontrolünü değil. Prompt injection'ı gerçekten durduran tek şey Impossible seviyesidir (model hiçbir şey çalıştırmaz; insan onaylar).
+> **Bu labın var olma nedeni olan temel ders:** **High** seviyesinde *hiç shell yoktur* (komutlar `shlex` ile argv'e ayrılır, binary ve opsiyonlar allowlist'ten geçer, ortam temizlenir) — ve buna rağmen **prompt injection dosyalarınızı okumaya devam eder**. `rm -rf /` ölür; `cat secret.txt` geçer. `shell=True`'i kaldırmak shell *sözdizimini* kaldırır, saldırganın *argümanlar* üzerindeki kontrolünü değil. 6. görev daha da ileri gider: **Impossible'da bile düşer**, çünkü yetkisiz bir *araç* (tool) içinde hiç komut çalıştırmadan veri sızdırır.
 
 ## 🚨 Güvenlik Uyarısı (ÇOK ÖNEMLİ!)
 
@@ -20,14 +20,14 @@ Seviyeyi arayüzden değiştirip aynı saldırıları tekrarlayın:
 
 | Seviye | Savunma | Öğrettiği ders |
 |---|---|---|
-| **Low** | Yok. Tespit edilen her komut `shell=True` ile çalışır. | Orijinal zafiyetli davranış; 5 görevin tamamı çözülebilir. |
+| **Low** | Yok. Tespit edilen her komut `shell=True` ile çalışır. | Orijinal zafiyetli davranış; 6 görevin tamamı çözülebilir. |
 | **Medium** | Yıkıcı komutların normalize edilmiş blacklist'i (`rm -rf`, `dd`, `shutdown`, `curl \| sh`, fork bombası, ...). | Blacklist'ler her zaman eksiktir — bir bypass bulun (ipucu: `base64 -d \| sh`). |
-| **High** | `shell=True` yok: shell metakarakterleri reddedilir, `shlex` ile argv ayrıştırma, binary + opsiyon allowlist'i, temizlenmiş ortam, sabit çalışma dizini. | *Yıkımı* durdurur, *sızdırmayı* durduramaz: `cat secret.txt` hâlâ geçer — 5 görevin 4'ü düşmeye devam eder. |
-| **Impossible** | LLM hiçbir şey çalıştırmaz. Çıktısı, bir insanın inceleyip kendisinin çalıştıracağı güvenilmez bir *öneridir*. | Tek gerçek çözüm: LLM asla çalıştırma hakkı taşımamalıdır. |
+| **High** | `shell=True` yok: shell metakarakterleri reddedilir, `shlex` ile argv ayrıştırma, binary + opsiyon allowlist'i, temizlenmiş ortam, sabit çalışma dizini. | *Yıkımı* durdurur, *sızdırmayı* durduramaz: `cat secret.txt` hâlâ geçer — 6 görevin 4'ü yalnızca çalıştırmayla düşmeye devam eder. |
+| **Impossible** | LLM hiçbir şey çalıştırmaz. Çıktısı, bir insanın inceleyip kendisinin çalıştıracağı güvenilmez bir *öneridir*. | *Çalıştırma* için tek gerçek çözüm — ama insan onayı *getirme*'yi (retrieval) engellemez: 6. görev yine düşer. |
 
 ## Görevler (CTF modu)
 
-Beş flag, format `MACARENA{...}`. İlerleme arayüzde (ve `progress.json` içinde) takip edilir.
+Altı flag, format `MACARENA{...}`. İlerleme arayüzde (ve `progress.json` içinde) takip edilir.
 
 | # | Görev | Amaç | Zorluk |
 |---|---|---|---|
@@ -36,17 +36,23 @@ Beş flag, format `MACARENA{...}`. İlerleme arayüzde (ve `progress.json` için
 | 3 | **Environment Leak** | Lab'ın ortam değişkenlerindeki flag'i sızdırın. (High'da ölür — temizlenmiş ortam.) | ★★ |
 | 4 | **The Poisoned Notes** | Modelden `notes.txt`'yi özetlemesini isteyin. Notların kendi gündemi var... *(dolaylı prompt enjeksiyonu)* | ★★★ |
 | 5 | **Root is Root** | `root_only.txt` dosyası `chmod 600`. Güzel bir savunma — gerçekten mi? | ★★ |
+| 6 | **The Over-Sharing Tool** | `internal_policy.txt` içindeki flag'i **tek bir komut çalıştırmadan** çıkarın — Impossible'da bile düşer. *(güvensiz eklenti tasarımı)* | ★★ |
 
 4. görev **dolaylı prompt enjeksiyonudur**: lab'da saf bir "dosyalarınızla sohbet" özelliği vardır — yerel bir `.txt` dosyasından bahsetmek içeriğini prompt'a ekler ve `notes.txt` gizli bir payload taşir; model bir komut çalıştırmaya teşvik edilir. Bu ekleme *her* güvenlik seviyesinde olur, çünkü prompt-enjeksiyonu savunmaları ile çalıştırma savunmaları farklı katmanlardır.
 
-İpuçları arayüzde (Challenges sekmesi) mevcuttur. Flag'ler sabittir ve repodadır; her biri `MACARENA_FLAG_<GOREV_ID>` ortam değişkeniyle kurulum bazında override edilebilir.
+6. görev aynı özelliği **OWASP LLM07 (Insecure Plugin Design)** olarak silahlandırır: dosya ekleme aracında yetkilendirme yoktur, bu yüzden *iç* belgeyi onu bahseden herkese teslim eder — komut yok, çalıştırma yok, policy kararı yok. İnsan onayı (Impossible) *çalıştırmayı* engeller, *ifşayı* engellemez.
+
+İpuçları arayüzde (Challenges sekmesi) mevcuttur. Flag'ler sabittir ve repodadır; her biri `MACARENA_FLAG_<GOREV_ID>` ortam değişkeniyle kurulum bazında override edilebilir. Takıldınız mı, ders mi veriyorsunuz? Adım adım çözümler **[WRITEUP_TR.md](WRITEUP_TR.md)** / **[WRITEUP.md](WRITEUP.md)** içinde (⚠️ tam spoiler).
 
 ## Özellikler
 
 * **Dinamik Model Yükleme:** CUDA GPU'da `deepseek-ai/deepseek-coder-6.7b-instruct`, CPU'da `gpt2` (değişmedi), ayrıca `MACARENA_MODEL` override'ı (`deepseek` / `gpt2` / herhangi bir HF repo id / modelsiz arayüz geliştirmesi için `stub`).
 * **Güvenlik Seviyeleri:** DVWA tarzı Low / Medium / High / Impossible, seviye başına savunma açıklamasıyla.
-* **CTF Görev Modu:** İlerleme takibi, ipuçları ve sıfırlama özellikli 5 flag'li görev.
+* **CTF Görev Modu:** İlerleme takibi, ipuçları ve sıfırlama özellikli 6 flag'li görev.
 * **Dolaylı Prompt Enjeksiyonu:** naive-RAG dosya ekleme ("Poisoned Notes" senaryosu).
+* **OWASP LLM Top 10 kapsamı:** görevler ve korumalar OWASP LLM risklerine eşlenir — aşağıdaki tabloya bakın.
+* **Tüketim sınırları (LLM04):** aşırı büyük prompt'lar modele ulaşmadan reddedilir; üretim uzunluğu, çalıştırma zaman aşımı ve konteyner belleği sınırlıdır.
+* **Tedarik zinciri duruşu (LLM05):** her bağımlılık pinned, slim temel imaj, yerel çıkarım — ve `scripts/audit_deps.sh` pin'leri OSV veritabanına karşı denetler.
 * **Gradio Web Arayüzü:** Lab, Challenges, Audit Log ve Defenses/About sekmeleri.
 * **Audit Log:** her etkileşim (prompt, genişletilmiş prompt, tespit edilen komut, policy kararı, çıktı, yakalanan flag'ler) `logs/audit.jsonl` dosyasına eklenir.
 * **Modüler ve Testli:** saf Python çekirdek (`macarena/` paketi), **model indirmesi gerektirmeyen** 90+ birim testi.
@@ -61,7 +67,9 @@ docker compose up --build
 # ilk çalıştırmada GPT-2 (~500 MB) hf-cache volume'üne indirilir
 ```
 
-Ardından http://127.0.0.1:7860 adresini açın. İmaj varsayılan olarak CPU'dur (GPT-2); GPU ve hardened varyantları [docker-compose.yml](docker-compose.yml) içinde yorumlu olarak hazır — hardened varyant (non-root, salt-okunur fs, düşürülmüş yetenekler) 5. görevi *permission denied* ile başarısız kılar; ders tam olarak budur.
+Ardından http://127.0.0.1:7860 adresini açın (LAN'dan `http://<sunucu-ip>:7860`). Konteyner, sınıf/atölye kullanımı için bilinçli olarak **0.0.0.0**'a bağlanır — bu, o ağdaki herkesin bilinçli olarak zafiyetli bir lab'a (ve modeline) erişebileceği anlamına gelir. Yalnızca izole, güvenilir bir ağda açık tutun; yalnızca loopback erişimi için [docker-compose.yml](docker-compose.yml) içindeki ports satırını `"127.0.0.1:7860:7860"` yapın.
+
+İmaj varsayılan olarak CPU'dur (GPT-2); GPU ve hardened varyantları [docker-compose.yml](docker-compose.yml) içinde yorumlu olarak hazır — hardened varyant (non-root, salt-okunur fs, düşürülmüş yetenekler) 5. görevi *permission denied* ile başarısız kılar; ders tam olarak budur.
 
 ### Yerel
 
@@ -93,6 +101,7 @@ pip install -r requirements-dev.txt
 pytest                                     # 90+ birim testi, model gerekmez
 python -m macarena.smoke                   # ucuca headless smoke testi
 MACARENA_MODEL=stub python main.py         # anında açılan arayüz, deterministik sahte model
+scripts/audit_deps.sh                      # OWASP LLM05: pin'lenmiş bağımlılıkları denetle (pip-audit gerekir)
 ```
 
 ## LLM Ajanları Savunmak
@@ -102,9 +111,26 @@ MACARENA_MODEL=stub python main.py         # anında açılan arayüz, determini
 3. **Model çıktısını veri olarak ele alın** — yapısal biçimlere ayrıştırın (argv), asla shell dizgisine yapıştırmayın.
 4. **En az ayrıcalık** — non-root konteynerler, salt-okunur dosya sistemi, düşürülmüş yetenekler, minimal ortam. Hardened compose varyantını deneyin.
 5. **Güvenilmeyen içerik içerik olarak kalır** — getirilen/eklenen belgeler asla talimat olarak çalıştırılmamalıdır (Poisoned Notes senaryosu).
-6. **Her şeyi kaydedin** — bir mavi takımın ihtiyaç duyacağı artefakt için Audit Log sekmesine bakın.
+6. **Araçların kendi yetkilendirmesi olmalı** — bir aracın neleri getirebileceğine *aracın içinde*, kullanıcı başına, sunucu tarafında karar verin (Over-Sharing Tool senaryosu). İnsan onayı çalıştırmayı engeller, getirmeyi engellemez.
+7. **Her şeyi kaydedin** — bir mavi takımın ihtiyaç duyacağı artefakt için Audit Log sekmesine bakın.
 
-Kaynak: [OWASP Top 10 for LLM Applications — LLM01: Prompt Injection](https://owasp.org/www-project-top-10-for-llm-applications/)
+## OWASP Top 10 for LLM Applications — kapsam haritası
+
+| Risk | Lab'da nerede sergilenir | Savunma nerede gösterilir |
+|---|---|---|
+| **LLM01** Prompt Injection | Ana akış; `notes.txt` ile dolaylı enjeksiyon (4. görev) | Impossible seviyesi; madde 1 ve 5 |
+| **LLM02** Insecure Output Handling | Model metni doğrudan shell'e verilir (Low) | High (`shlex` argv + allowlist); Impossible |
+| **LLM04** Model DoS | Aşırı büyük prompt'lar / sınırsız üretim | Girdi tavanı, `max_new_tokens`, zaman aşımı, `mem_limit` |
+| **LLM05** Supply Chain | Pin'lenmiş bağımlılıklar, slim imaj, yerel çıkarım | `requirements.txt` pin'leri + `scripts/audit_deps.sh` |
+| **LLM06** Sensitive Info Disclosure | 1–3. görevler: gizli dosya, dotfile, ortam değişkenleri | High ortam temizleme; en az ayrıcalık |
+| **LLM07** Insecure Plugin Design | Yetkilendirmesiz dosya ekleme aracı (6. görev) | Madde 6: her aracın içinde yetkilendirme |
+| **LLM08** Excessive Agency | Lab'ın tamamı: shell'e bağlı bir LLM | Seviye kaydırıcısı, Impossible'a kadar |
+| **LLM09** Overreliance | Model doğrulayamayacağı komutları güvenle üretir | Çıktı *öneri* olarak ele alınır; audit kaydı |
+| **LLM10** Model Theft | 0.0.0.0'a bağlı lab, modeli tüm ağla paylaşır | Lab'ı izole tutun; herkese açık model uç noktası yok |
+
+*(LLM03 Eğitim Verisi Zehirlenmesi eğitim-zamanı riskidir; çalışma-zamanı lab'ının kapsamı dışındadır.)*
+
+Kaynak: [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-llm-applications/)
 
 ## Fotoğraflar
 ![Deneme](https://github.com/user-attachments/assets/5b5a2c11-f214-4af8-86cc-017524da220b)
